@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+
+<title>Kính Lúp Hạt Mực</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&family=Be+Vietnam+Pro:wght@400;600&display=swap">
+<style>
+/* Layout: khung soi lớn chiếm chính, bảng điều khiển bên phải, xuống 1 cột ở màn hẹp */
+:root{
+  --paper:#f7f4ee; --ink:#1d1b18; --ink-soft:#5c574e; --line:#ddd6c8; --card:#fffdf8;
+  --c:#00a7d8; --m:#e0318b; --y:#f2c200; --k:#232020;
+  --font-d:"Baloo 2","Segoe UI",system-ui,sans-serif;
+  --font-b:"Be Vietnam Pro","Segoe UI",system-ui,sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --paper:#17161a; --ink:#f2efe8; --ink-soft:#a29c92; --line:#33303a; --card:#201e25;
+  --c:#2ec4ee; --m:#ff5fa8; --y:#ffd633; --k:#cfcac2; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --paper:#17161a; --ink:#f2efe8; --ink-soft:#a29c92; --line:#33303a; --card:#201e25;
+  --c:#2ec4ee; --m:#ff5fa8; --y:#ffd633; --k:#cfcac2; color-scheme:dark}
+
+body{background:var(--paper);color:var(--ink);font-family:var(--font-b);line-height:1.55}
+.wrap{max-width:1080px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:22px 44px}
+h1{font-family:var(--font-d);font-weight:800;font-size:clamp(28px,5vw,44px);margin:0;line-height:1.1;text-wrap:balance}
+h2{font-family:var(--font-d);font-weight:800;font-size:22px;margin:0 0 6px}
+h3{font-family:var(--font-d);font-weight:600;font-size:17px;margin:0 0 6px}
+p{margin:0 0 10px}
+.sub{color:var(--ink-soft);max-width:62ch;margin-top:8px}
+.dotrow{display:flex;gap:6px;margin-bottom:12px}
+.dotrow i{width:14px;height:14px;border-radius:50%;display:block}
+.tabs{display:flex;gap:8px;flex-wrap:wrap;margin:22px 0 16px}
+.tab{font-family:var(--font-d);font-weight:600;font-size:15px;border:2px solid var(--line);background:var(--card);color:var(--ink);
+  padding:8px 14px;border-radius:999px;cursor:pointer}
+.tab[aria-selected="true"]{border-color:var(--ink);background:var(--ink);color:var(--paper)}
+.tab:focus-visible{outline:3px solid var(--m);outline-offset:2px}
+.panel{display:grid;gap:16px}
+.card{background:var(--card);border:2px solid var(--line);border-radius:16px;padding:16px}
+.stage{display:grid;grid-template-columns:minmax(0,1fr) 250px;gap:16px}
+@media(max-width:760px){.stage{grid-template-columns:minmax(0,1fr)}}
+canvas{display:block;width:100%;max-width:100%;border-radius:12px;background:#fff}
+#view{aspect-ratio:4/3;cursor:grab;touch-action:none}
+#view.drag{cursor:grabbing}
+.ctrl{display:grid;gap:14px;align-content:start}
+label{font-size:13px;font-weight:600;display:flex;justify-content:space-between;gap:8px}
+input[type=range]{width:100%;accent-color:var(--m)}
+.zoomnum{font-family:var(--font-d);font-size:32px;font-weight:800;line-height:1}
+.badge{display:inline-block;font-size:13px;font-weight:600;padding:4px 10px;border-radius:999px;background:var(--line);color:var(--ink)}
+.jump{display:flex;gap:6px;flex-wrap:wrap}
+.jump button,.filebtn{font-size:13px;font-family:var(--font-b);font-weight:600;border:2px solid var(--line);background:transparent;color:var(--ink);border-radius:999px;padding:6px 12px;cursor:pointer}
+.jump button:hover,.filebtn:hover{border-color:var(--ink)}
+.filebtn{display:inline-block}
+#mini{aspect-ratio:4/3;border:2px solid var(--line);cursor:pointer}
+.bar{height:10px;border-radius:999px;background:var(--line);overflow:hidden}
+.bar>span{display:block;height:100%;background:linear-gradient(90deg,var(--c),var(--m),var(--y));width:0%}
+.sliders{display:grid;gap:10px}
+.sl-c input{accent-color:var(--c)} .sl-m input{accent-color:var(--m)}
+.sl-y input{accent-color:var(--y)} .sl-k input{accent-color:var(--k)}
+.swatchrow{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.swatch{width:84px;height:84px;border-radius:12px;border:2px solid var(--line)}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:560px){.two{grid-template-columns:1fr}}
+.note{border-left:4px solid var(--m);padding-left:12px;margin:12px 0}
+ul{margin:0 0 10px;padding-left:20px} li{margin-bottom:6px}
+.big{font-family:var(--font-d);font-weight:800;font-size:19px}
+.match{font-family:var(--font-d);font-weight:800;font-size:26px}
+.foot{color:var(--ink-soft);font-size:13px;margin-top:26px}
+.tiny{font-size:12px;color:var(--ink-soft)}
+</style>
+<style>img{max-width:100%}[hidden]{display:none!important}</style>
+</head>
+<body style="margin:0;font:14px system-ui">
+
+
+<div class="wrap">
+  <div class="dotrow"><i style="background:var(--c)"></i><i style="background:var(--m)"></i><i style="background:var(--y)"></i><i style="background:var(--k)"></i></div>
+  <h1>Kính lúp soi hạt mực in</h1>
+  <p class="sub">Một tấm ảnh đã được in ra giấy. Vặn kính lúp xuống thật chậm, ảnh sẽ từ từ rã ra thành những chấm mực bé xíu. Máy in chỉ có 4 lọ mực: xanh lơ, hồng sen, vàng và đen.</p>
+
+  <div class="tabs" role="tablist">
+    <button class="tab" role="tab" aria-selected="true" data-p="p1">1 · Soi kính lúp</button>
+    <button class="tab" role="tab" aria-selected="false" data-p="p2">2 · Tập in màu</button>
+    <button class="tab" role="tab" aria-selected="false" data-p="p3">3 · Mực in khác màu nước</button>
+  </div>
+
+  <section class="panel" id="p1">
+    <div class="stage">
+      <div class="card">
+        <canvas id="view" width="900" height="675"></canvas>
+        <p class="tiny" style="margin:10px 0 0">Kéo để đi chỗ khác · lăn chuột hoặc chụm hai ngón để phóng to · bấm đúp để soi sát chỗ vừa chỉ.</p>
+      </div>
+      <div class="ctrl card">
+        <div>
+          <div class="zoomnum" id="zlabel">×1</div>
+          <div class="badge" id="zdesc">Như mắt thường nhìn</div>
+        </div>
+        <div>
+          <label for="zoom"><span>Vặn kính lúp</span></label>
+          <input type="range" id="zoom" min="0" max="1000" value="0">
+        </div>
+        <div>
+          <label><span>Hạt mực hiện ra</span><span id="emv">0%</span></label>
+          <div class="bar"><span id="em"></span></div>
+        </div>
+        <div>
+          <h3>Nhảy tới xem</h3>
+          <div class="jump" id="jump"></div>
+        </div>
+        <div>
+          <h3>Đang soi chỗ này</h3>
+          <canvas id="mini" width="260" height="195"></canvas>
+        </div>
+        <div>
+          <h3>Mực ở điểm giữa</h3>
+          <div class="tiny" id="readout"></div>
+        </div>
+        <div>
+          <h3>Dùng ảnh của con</h3>
+          <label class="filebtn" for="file">Chọn một tấm ảnh</label>
+          <input type="file" id="file" accept="image/*" hidden>
+          <p class="tiny" style="margin:6px 0 0">Ảnh chỉ nằm trong máy của con, coi như vừa được đem đi in.</p>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Chuyện gì xảy ra khi con vặn kính lúp?</h2>
+      <p>Lúc đầu ảnh mượt như thật: trời chuyển màu đều, mặt nước lấp lánh. Vặn dần, mặt ảnh bắt đầu lấm tấm. Vặn nữa, màu mượt biến mất hẳn — <strong>không có giọt mực cam, mực tím hay mực da trời nào cả</strong>. Chỉ còn những chấm tròn xanh lơ, hồng sen, vàng, đen nằm cạnh nhau và chồng mép nhau.</p>
+      <p>Chấm càng to thì mực màu đó càng nhiều ở chỗ ấy. Chấm teo lại hoặc biến mất thì màu đó gần như vắng mặt. Mắt con đứng xa không tách nổi từng chấm nên tự gộp chúng thành một màu duy nhất.</p>
+      <p style="margin:0">Bốn màu mực xếp chấm theo bốn hướng nghiêng khác nhau, chồng lên nhau thành những vòng hoa thị xoay xoay. Thợ in gọi đó là <em>rosette</em>.</p>
+    </div>
+  </section>
+
+  <section class="panel" id="p2" hidden>
+    <div class="stage">
+      <div class="card">
+        <canvas id="patch" width="800" height="600"></canvas>
+        <p class="tiny" style="margin:10px 0 0">Đây là tờ in của con, nhìn qua kính lúp.</p>
+      </div>
+      <div class="ctrl card">
+        <h2 style="margin-bottom:2px">Vặn 4 lọ mực</h2>
+        <div class="sliders">
+          <div class="sl-c"><label for="ic"><span>Xanh lơ</span><span id="vc">0%</span></label><input type="range" id="ic" min="0" max="100" value="20"></div>
+          <div class="sl-m"><label for="im"><span>Hồng sen</span><span id="vm">0%</span></label><input type="range" id="im" min="0" max="100" value="70"></div>
+          <div class="sl-y"><label for="iy"><span>Vàng</span><span id="vy">0%</span></label><input type="range" id="iy" min="0" max="100" value="85"></div>
+          <div class="sl-k"><label for="ik"><span>Đen</span><span id="vk">0%</span></label><input type="range" id="ik" min="0" max="100" value="0"></div>
+        </div>
+        <div class="swatchrow">
+          <div><div class="swatch" id="sw"></div><div class="tiny" style="text-align:center;margin-top:4px">Nhìn từ xa</div></div>
+          <div><div class="swatch" id="tw"></div><div class="tiny" style="text-align:center;margin-top:4px">Màu cần in</div></div>
+        </div>
+        <div>
+          <div class="match" id="match">—</div>
+          <div class="tiny" id="hint"></div>
+        </div>
+        <div>
+          <h3>Thử in màu</h3>
+          <div class="jump" id="targets"></div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Vì sao thêm mực lại tối đi?</h2>
+      <p>Tờ giấy trắng hắt lại đủ mọi màu ánh sáng. Mỗi chấm mực là một tấm lọc: mực vàng giữ lại ánh sáng xanh lam, mực hồng sen giữ lại ánh sáng xanh lục, mực xanh lơ giữ lại ánh sáng đỏ. Càng nhiều mực thì ánh sáng hắt về mắt càng ít, nên màu càng đậm. Phủ cả ba thì gần như thành đen — nhưng thợ in vẫn thêm một lọ mực đen riêng cho chữ thật sắc và đỡ tốn mực.</p>
+    </div>
+  </section>
+
+  <section class="panel" id="p3" hidden>
+    <div class="card">
+      <h2>Hộp màu nước và máy in làm hai việc khác nhau</h2>
+      <p>Cả hai cùng cho ra màu xanh lá, nhưng cách làm không giống nhau chút nào. Kéo thanh bên dưới để lùi ra xa dần.</p>
+      <div class="two">
+        <div>
+          <canvas id="mixA" width="420" height="300"></canvas>
+          <h3 style="margin-top:10px">Màu nước: trộn thật</h3>
+          <p style="font-size:14px;margin:0">Hạt màu xanh lơ và hạt màu vàng quyện vào nhau ngay trong giọt nước. Soi kính lúp vẫn chỉ thấy một màu xanh lá đều tăm tắp.</p>
+        </div>
+        <div>
+          <canvas id="mixB" width="420" height="300"></canvas>
+          <h3 style="margin-top:10px">Mực in: đứng cạnh nhau</h3>
+          <p style="font-size:14px;margin:0">Chấm xanh lơ và chấm vàng nằm riêng, chỉ chồng mép. Soi kính lúp là thấy ngay hai màu tách bạch.</p>
+        </div>
+      </div>
+      <div style="margin-top:14px">
+        <label for="far"><span>Lùi ra xa</span><span id="farlab">sát mắt</span></label>
+        <input type="range" id="far" min="0" max="100" value="0">
+      </div>
+    </div>
+    <div class="card">
+      <h2>Ba điều cần nhớ cho đúng</h2>
+      <ul>
+        <li><span class="big">Máy in không trộn mực.</span> Nó đặt các chấm bé cạnh nhau. Người trộn màu ở đây chính là <strong>mắt của con</strong>, khi con đứng đủ xa.</li>
+        <li><span class="big">Màu nước thì trộn thật.</span> Hai màu hòa vào nhau trong nước thành một màu mới, không tách ra lại được, và phóng to cũng không thấy chấm.</li>
+        <li><span class="big">Màu của chiếc lá, bông hoa lại là chuyện khác nữa.</span> Lá không hề có chấm mực nào. Chất diệp lục trong lá hút bớt ánh sáng đỏ và lam, chỉ hắt ánh sáng xanh lục về mắt con. Thiên nhiên không in, không trộn — nó chọn ánh sáng để trả lại.</li>
+      </ul>
+      <div class="note">Vậy nên nếu có ai hỏi “máy in trộn màu cam từ đỏ với vàng à?”, con trả lời được rồi đó: máy in chẳng trộn gì cả, nó chỉ xếp chấm hồng sen và chấm vàng cạnh nhau thôi.</div>
+    </div>
+  </section>
+
+  <p class="foot">Chấm mực thật trên tờ tạp chí rộng khoảng 0,15 mm — mảnh hơn sợi tóc. Một tấm ảnh in cỡ bàn tay có thể chứa hơn một triệu chấm như vậy.</p>
+</div>
+
+<script>
+(function(){
+"use strict";
+var INK={c:[0,167,216],m:[224,49,139],y:[242,194,0],k:[26,24,22]};
+var ANG={c:15,m:75,y:0,k:45};
+var SP=4.6;                 /* khoảng cách tâm chấm, tính bằng điểm ảnh gốc */
+var SW=1600, SH=1200;       /* kích thước "tờ ảnh" gốc */
+
+/* ===== tờ ảnh gốc: hoàng hôn trên biển, vẽ bằng gradient cho liền mạch ===== */
+var srcC=document.createElement("canvas"); srcC.width=SW; srcC.height=SH;
+var sctx=srcC.getContext("2d"), sdata=null;
+
+function rnd(seed){ var s=seed; return function(){ s=(s*1664525+1013904223)%4294967296; return s/4294967296; }; }
+
+function paintScene(){
+  var g=sctx.createLinearGradient(0,0,0,SH*0.62);
+  g.addColorStop(0,"#2a4a86"); g.addColorStop(0.28,"#5d6fa8");
+  g.addColorStop(0.55,"#c98a86"); g.addColorStop(0.78,"#f0a865");
+  g.addColorStop(1,"#ffd38a");
+  sctx.fillStyle=g; sctx.fillRect(0,0,SW,SH*0.62);
+
+  /* quầng sáng mặt trời */
+  var sx=SW*0.63, sy=SH*0.52;
+  var gl=sctx.createRadialGradient(sx,sy,0,sx,sy,SW*0.46);
+  gl.addColorStop(0,"rgba(255,246,206,0.95)"); gl.addColorStop(0.18,"rgba(255,206,120,0.55)");
+  gl.addColorStop(0.5,"rgba(255,170,96,0.22)"); gl.addColorStop(1,"rgba(255,150,90,0)");
+  sctx.fillStyle=gl; sctx.fillRect(0,0,SW,SH*0.62);
+
+  /* mây dải */
+  var r=rnd(7);
+  for(var i=0;i<26;i++){
+    var cy=SH*(0.06+r()*0.42), cx=SW*r(), w=SW*(0.12+r()*0.3), h=SH*(0.012+r()*0.03);
+    var warm=cy>SH*0.3;
+    var cg=sctx.createLinearGradient(cx-w,cy,cx+w,cy);
+    var col=warm?"255,196,150":"190,186,210";
+    cg.addColorStop(0,"rgba("+col+",0)"); cg.addColorStop(0.5,"rgba("+col+",0.55)"); cg.addColorStop(1,"rgba("+col+",0)");
+    sctx.fillStyle=cg; sctx.beginPath(); sctx.ellipse(cx,cy,w,h,0,0,6.2832); sctx.fill();
+  }
+
+  /* đĩa mặt trời */
+  var sd=sctx.createRadialGradient(sx,sy,0,sx,sy,SW*0.055);
+  sd.addColorStop(0,"#fffdf0"); sd.addColorStop(0.6,"#ffe9a6"); sd.addColorStop(1,"rgba(255,208,120,0)");
+  sctx.fillStyle=sd; sctx.beginPath(); sctx.arc(sx,sy,SW*0.055,0,6.2832); sctx.fill();
+
+  /* biển */
+  var sea=sctx.createLinearGradient(0,SH*0.62,0,SH);
+  sea.addColorStop(0,"#e8a269"); sea.addColorStop(0.22,"#9c7d94");
+  sea.addColorStop(0.6,"#3f5177"); sea.addColorStop(1,"#20304f");
+  sctx.fillStyle=sea; sctx.fillRect(0,SH*0.62,SW,SH*0.38);
+
+  /* vệt nắng dọi trên nước */
+  var r2=rnd(21);
+  for(var j=0;j<420;j++){
+    var t=r2(), yy=SH*(0.625+t*0.37);
+    var spread=SW*(0.02+t*0.26);
+    var xx=sx+(r2()-0.5)*2*spread;
+    var w2=SW*(0.004+t*0.022)*(0.4+r2()), h2=SH*(0.0016+t*0.004);
+    var a=(1-t)*0.75*(0.3+r2());
+    sctx.fillStyle="rgba(255,"+Math.round(220-60*t)+","+Math.round(170-60*t)+","+a.toFixed(3)+")";
+    sctx.beginPath(); sctx.ellipse(xx,yy,w2,h2,0,0,6.2832); sctx.fill();
+  }
+  /* sóng nhẹ */
+  for(var k=0;k<160;k++){
+    var t2=r2(), y3=SH*(0.63+t2*0.36), x3=SW*r2(), w3=SW*(0.02+t2*0.08);
+    sctx.fillStyle="rgba(255,255,255,"+(0.05+0.1*r2()).toFixed(3)+")";
+    sctx.beginPath(); sctx.ellipse(x3,y3,w3,SH*0.0014,0,0,6.2832); sctx.fill();
+  }
+
+  /* đường chân trời mảnh + dải đất xa */
+  sctx.fillStyle="rgba(60,52,78,0.55)";
+  sctx.beginPath(); sctx.moveTo(0,SH*0.618);
+  for(var x=0;x<=SW;x+=40){ sctx.lineTo(x,SH*0.618-Math.max(0,Math.sin(x/420)*SH*0.012)); }
+  sctx.lineTo(SW,SH*0.624); sctx.lineTo(0,SH*0.624); sctx.fill();
+
+  /* chiếc thuyền buồm */
+  var bx=SW*0.30, by=SH*0.655, s=SW*0.055;
+  sctx.fillStyle="#2b2436";
+  sctx.beginPath(); sctx.moveTo(bx-s*0.55,by); sctx.lineTo(bx+s*0.55,by);
+  sctx.lineTo(bx+s*0.34,by+s*0.17); sctx.lineTo(bx-s*0.36,by+s*0.17); sctx.closePath(); sctx.fill();
+  sctx.beginPath(); sctx.moveTo(bx,by-s*0.08); sctx.lineTo(bx,by-s*1.05);
+  sctx.lineTo(bx+s*0.5,by-s*0.08); sctx.closePath(); sctx.fill();
+  sctx.beginPath(); sctx.moveTo(bx-s*0.04,by-s*0.1); sctx.lineTo(bx-s*0.42,by-s*0.1);
+  sctx.lineTo(bx-s*0.04,by-s*0.78); sctx.closePath(); sctx.fill();
+  sctx.globalAlpha=0.25; sctx.fillStyle="#1b1628";
+  sctx.beginPath(); sctx.ellipse(bx,by+s*0.3,s*0.5,s*0.07,0,0,6.2832); sctx.fill();
+  sctx.globalAlpha=1;
+
+  /* đàn chim nhỏ */
+  sctx.strokeStyle="rgba(50,40,60,0.75)"; sctx.lineWidth=SW*0.0022; sctx.lineCap="round";
+  var birds=[[0.80,0.22,1],[0.845,0.26,0.8],[0.775,0.285,0.7],[0.875,0.205,0.6]];
+  birds.forEach(function(b){
+    var px=SW*b[0], py=SH*b[1], w=SW*0.016*b[2];
+    sctx.beginPath(); sctx.moveTo(px-w,py); sctx.quadraticCurveTo(px-w*0.5,py-w*0.5,px,py);
+    sctx.quadraticCurveTo(px+w*0.5,py-w*0.5,px+w,py); sctx.stroke();
+  });
+
+  /* hạt mịn cho giống ảnh chụp */
+  var im=sctx.getImageData(0,0,SW,SH), d=im.data, r3=rnd(99);
+  for(var p=0;p<d.length;p+=4){
+    var n=(r3()-0.5)*7; d[p]+=n; d[p+1]+=n; d[p+2]+=n;
+  }
+  sctx.putImageData(im,0,0);
+  sdata=sctx.getImageData(0,0,SW,SH).data;
+}
+
+function sample(x,y,out){           /* x,y tính bằng điểm ảnh gốc, lấy mẫu song tuyến */
+  if(x<0)x=0; if(y<0)y=0; if(x>SW-1.001)x=SW-1.001; if(y>SH-1.001)y=SH-1.001;
+  var x0=x|0, y0=y|0, fx=x-x0, fy=y-y0, w=SW;
+  var i00=(y0*w+x0)*4, i10=i00+4, i01=i00+w*4, i11=i01+4;
+  for(var c=0;c<3;c++){
+    var a=sdata[i00+c]+(sdata[i10+c]-sdata[i00+c])*fx;
+    var b=sdata[i01+c]+(sdata[i11+c]-sdata[i01+c])*fx;
+    out[c]=a+(b-a)*fy;
+  }
+  return out;
+}
+var tmpc=[0,0,0];
+function cmykAt(x,y,out){
+  sample(x,y,tmpc);
+  var r=tmpc[0]/255,g=tmpc[1]/255,b=tmpc[2]/255, k=1-Math.max(r,Math.max(g,b));
+  if(k>0.999){out[0]=out[1]=out[2]=0;out[3]=1;return out;}
+  out[0]=(1-r-k)/(1-k); out[1]=(1-g-k)/(1-k); out[2]=(1-b-k)/(1-k); out[3]=k; return out;
+}
+function clamp(v,a,b){return v<a?a:(v>b?b:v);}
+
+/* ===== khung soi ===== */
+var view=document.getElementById("view"), vctx=view.getContext("2d");
+var hc=document.createElement("canvas"), hctx=hc.getContext("2d");
+var mini=document.getElementById("mini"), mctx=mini.getContext("2d");
+var zr=document.getElementById("zoom"), zlabel=document.getElementById("zlabel"),
+    zdesc=document.getElementById("zdesc"), readout=document.getElementById("readout"),
+    emBar=document.getElementById("em"), emv=document.getElementById("emv");
+
+var ZMAX=90;
+var cx=0.42, cy=0.55;      /* tâm đang soi, 0..1 */
+var zoom=1, zTarget=1, anim=0;
+function sliderToZoom(v){ return Math.pow(ZMAX, v/1000); }
+function zoomToSlider(z){ return Math.round(Math.log(z)/Math.log(ZMAX)*1000); }
+
+function halftone(W,H,vx,vy,vw,vh,scale){
+  hctx.fillStyle="#fff"; hctx.fillRect(0,0,W,H);
+  hctx.globalCompositeOperation="multiply";
+  var keys=["y","c","m","k"], idx={y:2,c:0,m:1,k:3}, v=[0,0,0,0];
+  for(var n=0;n<4;n++){
+    var ch=keys[n], a=ANG[ch]*Math.PI/180, ca=Math.cos(a), sa=Math.sin(a), col=INK[ch];
+    hctx.fillStyle="rgb("+col[0]+","+col[1]+","+col[2]+")";
+    var i0=1e9,i1=-1e9,j0=1e9,j1=-1e9, pad=SP*2;
+    var xs=[vx-pad,vx+vw+pad,vx-pad,vx+vw+pad], ys=[vy-pad,vy-pad,vy+vh+pad,vy+vh+pad];
+    for(var q=0;q<4;q++){
+      var u=( xs[q]*ca+ys[q]*sa)/SP, w2=(-xs[q]*sa+ys[q]*ca)/SP;
+      if(u<i0)i0=u; if(u>i1)i1=u; if(w2<j0)j0=w2; if(w2>j1)j1=w2;
+    }
+    i0=Math.floor(i0);i1=Math.ceil(i1);j0=Math.floor(j0);j1=Math.ceil(j1);
+    if((i1-i0+1)*(j1-j0+1)>120000) continue;
+    hctx.beginPath();
+    for(var i=i0;i<=i1;i++)for(var j=j0;j<=j1;j++){
+      var gx=i*SP, gy=j*SP, x=gx*ca-gy*sa, y=gx*sa+gy*ca;
+      if(x<vx-SP||x>vx+vw+SP||y<vy-SP||y>vy+vh+SP) continue;
+      cmykAt(x,y,v);
+      var val=v[idx[ch]];
+      if(val<=0.012) continue;
+      var r=(SP/2)*Math.sqrt(val)*1.16*scale;
+      if(r<0.3) continue;
+      var px=(x-vx)*scale, py=(y-vy)*scale;
+      hctx.moveTo(px+r,py); hctx.arc(px,py,r,0,6.2832);
+    }
+    hctx.fill();
+  }
+  hctx.globalCompositeOperation="source-over";
+}
+
+function drawView(){
+  var W=view.width, H=view.height;
+  if(hc.width!==W){ hc.width=W; hc.height=H; }
+  var vw=SW/zoom, vh=vw*H/W, vx=cx*SW-vw/2, vy=cy*SH-vh/2;
+  vx=clamp(vx,-vw*0.15,SW-vw*0.85); vy=clamp(vy,-vh*0.15,SH-vh*0.85);
+  var scale=W/vw;
+
+  vctx.fillStyle="#efece4"; vctx.fillRect(0,0,W,H);
+  vctx.imageSmoothingEnabled=true; vctx.imageSmoothingQuality="high";
+  vctx.drawImage(srcC, vx,vy,vw,vh, 0,0,W,H);
+
+  var spacingPx=SP*scale;
+  var mix=clamp((spacingPx-2.6)/(9.5-2.6),0,1);
+  mix=mix*mix*(3-2*mix);                 /* chuyển dần, không giật */
+  if(mix>0.004){
+    halftone(W,H,vx,vy,vw,vh,scale);
+    vctx.globalAlpha=mix; vctx.drawImage(hc,0,0); vctx.globalAlpha=1;
+  }
+
+  zlabel.textContent="×"+(zoom<10?zoom.toFixed(1):Math.round(zoom));
+  zdesc.textContent = mix<0.05?"Như mắt thường nhìn":mix<0.35?"Mặt ảnh bắt đầu lấm tấm":
+                      mix<0.85?"Chấm mực đang hiện ra":"Chỉ còn bốn màu mực";
+  emBar.style.width=Math.round(mix*100)+"%"; emv.textContent=Math.round(mix*100)+"%";
+  var v=[0,0,0,0]; cmykAt(vx+vw/2,vy+vh/2,v);
+  readout.innerHTML="Xanh lơ "+Math.round(v[0]*100)+"% · Hồng sen "+Math.round(v[1]*100)+
+    "% · Vàng "+Math.round(v[2]*100)+"% · Đen "+Math.round(v[3]*100)+"%";
+
+  var mw=mini.width, mh=mini.height;
+  mctx.drawImage(srcC,0,0,SW,SH,0,0,mw,mh);
+  mctx.strokeStyle="#e0318b"; mctx.lineWidth=3;
+  mctx.strokeRect((vx/SW)*mw,(vy/SH)*mh,Math.max(4,(vw/SW)*mw),Math.max(4,(vh/SH)*mh));
+}
+
+/* phóng to mượt: luôn đi dần tới mức đích */
+function tick(){
+  var d=zTarget-zoom;
+  if(Math.abs(Math.log(zTarget/zoom))<0.004){ zoom=zTarget; anim=0; drawView(); return; }
+  zoom=Math.exp(Math.log(zoom)+Math.log(zTarget/zoom)*0.16);
+  zr.value=zoomToSlider(zoom);
+  drawView();
+  anim=requestAnimationFrame(tick);
+}
+function setZoom(z,instant){
+  zTarget=clamp(z,1,ZMAX);
+  if(instant){ zoom=zTarget; drawView(); return; }
+  if(!anim) anim=requestAnimationFrame(tick);
+}
+zr.addEventListener("input",function(){ zoom=sliderToZoom(+zr.value); zTarget=zoom; if(anim){cancelAnimationFrame(anim);anim=0;} drawView(); });
+
+view.addEventListener("wheel",function(e){
+  e.preventDefault();
+  setZoom(zTarget*Math.pow(1.0016,-e.deltaY));
+},{passive:false});
+
+var ptrs={}, dragging=false, lx=0, ly=0, pinch0=0, z0=1;
+view.addEventListener("pointerdown",function(e){
+  view.setPointerCapture(e.pointerId); ptrs[e.pointerId]=[e.clientX,e.clientY];
+  var k=Object.keys(ptrs);
+  if(k.length===1){ dragging=true; lx=e.clientX; ly=e.clientY; view.classList.add("drag"); }
+  else if(k.length===2){ dragging=false; pinch0=dist(); z0=zTarget; }
+});
+function dist(){ var k=Object.keys(ptrs); if(k.length<2)return 0;
+  var a=ptrs[k[0]], b=ptrs[k[1]]; return Math.hypot(a[0]-b[0],a[1]-b[1]); }
+view.addEventListener("pointermove",function(e){
+  if(!(e.pointerId in ptrs)) return;
+  ptrs[e.pointerId]=[e.clientX,e.clientY];
+  var k=Object.keys(ptrs);
+  if(k.length>=2){ var d=dist(); if(pinch0>10) setZoom(z0*d/pinch0,true); return; }
+  if(!dragging) return;
+  var rect=view.getBoundingClientRect(), s=view.width/rect.width;
+  cx=clamp(cx-((e.clientX-lx)*s)/(zoom*view.width)*(SW/SW),0,1);
+  cy=clamp(cy-((e.clientY-ly)*s)/(zoom*view.width)*(SW/SH),0,1);
+  lx=e.clientX; ly=e.clientY; drawView();
+});
+function up(e){ delete ptrs[e.pointerId]; if(!Object.keys(ptrs).length){dragging=false;view.classList.remove("drag");} }
+view.addEventListener("pointerup",up); view.addEventListener("pointercancel",up);
+view.addEventListener("dblclick",function(e){
+  var r=view.getBoundingClientRect();
+  var vw=SW/zoom, vh=vw*view.height/view.width;
+  var vx=cx*SW-vw/2, vy=cy*SH-vh/2;
+  cx=clamp((vx+((e.clientX-r.left)/r.width)*vw)/SW,0,1);
+  cy=clamp((vy+((e.clientY-r.top)/r.height)*vh)/SH,0,1);
+  setZoom(zTarget<12?25:(zTarget<45?70:2));
+});
+mini.addEventListener("click",function(e){
+  var r=mini.getBoundingClientRect();
+  cx=clamp((e.clientX-r.left)/r.width,0,1); cy=clamp((e.clientY-r.top)/r.height,0,1); drawView();
+});
+
+var JUMPS=[["Mặt trời",0.63,0.52,30],["Vệt nắng trên nước",0.6,0.78,45],
+           ["Chiếc thuyền",0.30,0.655,55],["Bầu trời xanh",0.2,0.12,22],["Xem cả ảnh",0.5,0.5,1]];
+var jb=document.getElementById("jump");
+JUMPS.forEach(function(j){
+  var b=document.createElement("button"); b.textContent=j[0];
+  b.addEventListener("click",function(){ cx=j[1]; cy=j[2]; setZoom(j[3]); });
+  jb.appendChild(b);
+});
+
+document.getElementById("file").addEventListener("change",function(e){
+  var f=e.target.files&&e.target.files[0]; if(!f) return;
+  var url=URL.createObjectURL(f), img=new Image();
+  img.onload=function(){
+    var sc=Math.max(SW/img.width,SH/img.height), w=img.width*sc, h=img.height*sc;
+    sctx.fillStyle="#fff"; sctx.fillRect(0,0,SW,SH);
+    sctx.drawImage(img,(SW-w)/2,(SH-h)/2,w,h);
+    try{ sdata=sctx.getImageData(0,0,SW,SH).data; }catch(err){}
+    URL.revokeObjectURL(url); cx=0.5; cy=0.5; setZoom(1,true);
+  };
+  img.src=url;
+});
+
+/* ===== panel 2 ===== */
+var patch=document.getElementById("patch"), pctx=patch.getContext("2d");
+var ids=["ic","im","iy","ik"], labs=["vc","vm","vy","vk"];
+var sw=document.getElementById("sw"), tw=document.getElementById("tw"),
+    matchEl=document.getElementById("match"), hintEl=document.getElementById("hint");
+var target=null;
+var TARGETS=[["Cam quả quýt",[240,130,30]],["Xanh lá cây",[60,150,70]],["Tím hoa cà",[140,80,175]],
+             ["Nâu đất",[135,95,60]],["Hồng phấn",[245,170,190]],["Xanh biển",[30,95,175]]];
+function inkRGB(c,m,y,k){ return [255*(1-c)*(1-k),255*(1-m)*(1-k),255*(1-y)*(1-k)]; }
+function drawPatch(){
+  var W=patch.width,H=patch.height,S=78;
+  var vals={c:+document.getElementById("ic").value/100,m:+document.getElementById("im").value/100,
+            y:+document.getElementById("iy").value/100,k:+document.getElementById("ik").value/100};
+  for(var n=0;n<4;n++) document.getElementById(labs[n]).textContent=Math.round(+document.getElementById(ids[n]).value)+"%";
+  pctx.fillStyle="#fff"; pctx.fillRect(0,0,W,H);
+  pctx.globalCompositeOperation="multiply";
+  var keys=["y","c","m","k"];
+  for(var q=0;q<4;q++){
+    var ch=keys[q], v=vals[ch]; if(v<=0.005) continue;
+    var a=ANG[ch]*Math.PI/180, ca=Math.cos(a), sa=Math.sin(a), col=INK[ch];
+    pctx.fillStyle="rgb("+col[0]+","+col[1]+","+col[2]+")";
+    var r=(S/2)*Math.sqrt(v)*1.16; pctx.beginPath();
+    for(var i=-14;i<=14;i++)for(var j=-14;j<=14;j++){
+      var x=W/2+i*S*ca-j*S*sa, y=H/2+i*S*sa+j*S*ca;
+      if(x<-S||x>W+S||y<-S||y>H+S) continue;
+      pctx.moveTo(x+r,y); pctx.arc(x,y,r,0,6.2832);
+    }
+    pctx.fill();
+  }
+  pctx.globalCompositeOperation="source-over";
+  var rgb=inkRGB(vals.c,vals.m,vals.y,vals.k);
+  sw.style.background="rgb("+rgb.map(Math.round).join(",")+")";
+  if(target){
+    tw.style.background="rgb("+target[1].join(",")+")";
+    var d=0; for(var t=0;t<3;t++){var e=rgb[t]-target[1][t]; d+=e*e;}
+    var pct=Math.max(0,Math.round(100-Math.sqrt(d)/3.2));
+    matchEl.textContent="Khớp "+pct+"%";
+    hintEl.textContent = pct>=93?"Giỏi quá, đúng màu rồi!" : pct>=78?"Sắp được rồi, chỉnh nhẹ thôi." : "Thử vặn lọ mực khác xem sao.";
+  } else { tw.style.background="repeating-linear-gradient(45deg,var(--line) 0 8px,transparent 8px 16px)";
+    matchEl.textContent="—"; hintEl.textContent="Chọn một màu cần in ở dưới nhé."; }
+}
+ids.forEach(function(id){ document.getElementById(id).addEventListener("input",drawPatch); });
+var tbox=document.getElementById("targets");
+TARGETS.forEach(function(t){
+  var b=document.createElement("button"); b.textContent=t[0];
+  b.addEventListener("click",function(){ target=t; drawPatch(); });
+  tbox.appendChild(b);
+});
+
+/* ===== panel 3 ===== */
+var mixA=document.getElementById("mixA"), actx=mixA.getContext("2d");
+var mixB=document.getElementById("mixB"), bctx=mixB.getContext("2d");
+var far=document.getElementById("far"), farlab=document.getElementById("farlab");
+function drawMix(){
+  var f=+far.value/100, S=64-f*58;
+  farlab.textContent = f<0.2?"sát mắt":f<0.6?"cách một gang tay":"đứng xa cả mét";
+  var green=inkRGB(0.65,0,0.85,0);
+  actx.fillStyle="rgb("+green.map(Math.round).join(",")+")";
+  actx.fillRect(0,0,mixA.width,mixA.height);
+  var W=mixB.width,H=mixB.height;
+  bctx.fillStyle="#fff"; bctx.fillRect(0,0,W,H);
+  bctx.globalCompositeOperation="multiply";
+  [["c",0.65,15],["y",0.85,0]].forEach(function(p){
+    var col=INK[p[0]], a=p[2]*Math.PI/180, ca=Math.cos(a), sa=Math.sin(a);
+    bctx.fillStyle="rgb("+col[0]+","+col[1]+","+col[2]+")";
+    var r=(S/2)*Math.sqrt(p[1])*1.16; bctx.beginPath();
+    for(var i=-70;i<=70;i++)for(var j=-70;j<=70;j++){
+      var x=W/2+i*S*ca-j*S*sa, y=H/2+i*S*sa+j*S*ca;
+      if(x<-S||x>W+S||y<-S||y>H+S) continue;
+      bctx.moveTo(x+r,y); bctx.arc(x,y,r,0,6.2832);
+    }
+    bctx.fill();
+  });
+  bctx.globalCompositeOperation="source-over";
+}
+far.addEventListener("input",drawMix);
+
+/* ===== tabs ===== */
+Array.prototype.forEach.call(document.querySelectorAll(".tab"),function(t){
+  t.addEventListener("click",function(){
+    Array.prototype.forEach.call(document.querySelectorAll(".tab"),function(o){o.setAttribute("aria-selected",String(o===t));});
+    ["p1","p2","p3"].forEach(function(id){ document.getElementById(id).hidden=(id!==t.dataset.p); });
+    if(t.dataset.p==="p1") drawView();
+  });
+});
+
+paintScene(); drawView(); drawPatch(); drawMix();
+})();
+</script>
+
+</body>
+</html>
