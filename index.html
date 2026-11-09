@@ -87,7 +87,7 @@ ul{margin:0 0 10px;padding-left:20px} li{margin-bottom:6px}
   <section class="panel" id="p1">
     <div class="stage">
       <div class="card">
-        <canvas id="view" width="900" height="675"></canvas>
+        <canvas id="view" width="820" height="615"></canvas>
         <p class="tiny" style="margin:10px 0 0">Kéo để đi chỗ khác · lăn chuột hoặc chụm hai ngón để phóng to · bấm đúp để soi sát chỗ vừa chỉ.</p>
       </div>
       <div class="ctrl card">
@@ -317,6 +317,15 @@ function sample(x,y,out){           /* x,y tính bằng điểm ảnh gốc, l�
   return out;
 }
 var tmpc=[0,0,0];
+/* lấy mẫu nhanh: điểm ảnh gần nhất — dùng khi vẽ hàng vạn chấm */
+function cmykNear(x,y,out){
+  var xi=x<0?0:(x>SW-1?SW-1:x|0), yi=y<0?0:(y>SH-1?SH-1:y|0);
+  var i=(yi*SW+xi)*4, r=sdata[i]/255, g=sdata[i+1]/255, b=sdata[i+2]/255;
+  var mx=r>g?(r>b?r:b):(g>b?g:b), k=1-mx;
+  if(k>0.999){out[0]=out[1]=out[2]=0;out[3]=1;return out;}
+  var d=1-k;
+  out[0]=(mx-r)/d; out[1]=(mx-g)/d; out[2]=(mx-b)/d; out[3]=k; return out;
+}
 function cmykAt(x,y,out){
   sample(x,y,tmpc);
   var r=tmpc[0]/255,g=tmpc[1]/255,b=tmpc[2]/255, k=1-Math.max(r,Math.max(g,b));
@@ -336,6 +345,14 @@ var zr=document.getElementById("zoom"), zlabel=document.getElementById("zlabel")
 var ZMAX=90;
 var cx=0.42, cy=0.55;      /* tâm đang soi, 0..1 */
 var zoom=1, zTarget=1, anim=0;
+var moving=false, settleT=0, rafId=0;
+/* mỗi khung hình chỉ vẽ một lần, dù có bao nhiêu sự kiện chuột dồn tới */
+function requestDraw(){ if(!rafId) rafId=requestAnimationFrame(function(){ rafId=0; drawView(); }); }
+function touch(){                      /* đang có tương tác: vẽ nhẹ cho mượt */
+  moving=true; clearTimeout(settleT);
+  settleT=setTimeout(function(){ moving=false; requestDraw(); },140);
+  requestDraw();
+}
 function sliderToZoom(v){ return Math.pow(ZMAX, v/1000); }
 function zoomToSlider(z){ return Math.round(Math.log(z)/Math.log(ZMAX)*1000); }
 
@@ -353,15 +370,15 @@ function halftone(W,H,vx,vy,vw,vh,scale){
       if(u<i0)i0=u; if(u>i1)i1=u; if(w2<j0)j0=w2; if(w2>j1)j1=w2;
     }
     i0=Math.floor(i0);i1=Math.ceil(i1);j0=Math.floor(j0);j1=Math.ceil(j1);
-    if((i1-i0+1)*(j1-j0+1)>120000) continue;
     hctx.beginPath();
+    var ii=idx[ch], rk=(SP/2)*1.16*scale;
     for(var i=i0;i<=i1;i++)for(var j=j0;j<=j1;j++){
       var gx=i*SP, gy=j*SP, x=gx*ca-gy*sa, y=gx*sa+gy*ca;
       if(x<vx-SP||x>vx+vw+SP||y<vy-SP||y>vy+vh+SP) continue;
-      cmykAt(x,y,v);
-      var val=v[idx[ch]];
+      cmykNear(x,y,v);
+      var val=v[ii];
       if(val<=0.012) continue;
-      var r=(SP/2)*Math.sqrt(val)*1.16*scale;
+      var r=rk*Math.sqrt(val);
       if(r<0.3) continue;
       var px=(x-vx)*scale, py=(y-vy)*scale;
       hctx.moveTo(px+r,py); hctx.arc(px,py,r,0,6.2832);
@@ -383,9 +400,11 @@ function drawView(){
   vctx.drawImage(srcC, vx,vy,vw,vh, 0,0,W,H);
 
   var spacingPx=SP*scale;
-  var mix=clamp((spacingPx-2.6)/(9.5-2.6),0,1);
+  var mix=clamp((spacingPx-5)/(13-5),0,1);
   mix=mix*mix*(3-2*mix);                 /* chuyển dần, không giật */
-  if(mix>0.004){
+  /* số chấm phải vẽ; khi đang kéo/phóng thì giới hạn thấp hơn cho mượt tay */
+  var cells=4*(vw/SP)*(vh/SP), budget=moving?52000:260000;
+  if(mix>0.004 && cells<=budget){
     halftone(W,H,vx,vy,vw,vh,scale);
     vctx.globalAlpha=mix; vctx.drawImage(hc,0,0); vctx.globalAlpha=1;
   }
@@ -406,19 +425,20 @@ function drawView(){
 
 /* phóng to mượt: luôn đi dần tới mức đích */
 function tick(){
-  var d=zTarget-zoom;
-  if(Math.abs(Math.log(zTarget/zoom))<0.004){ zoom=zTarget; anim=0; drawView(); return; }
-  zoom=Math.exp(Math.log(zoom)+Math.log(zTarget/zoom)*0.16);
+  if(Math.abs(Math.log(zTarget/zoom))<0.004){
+    zoom=zTarget; anim=0; zr.value=zoomToSlider(zoom); moving=false; drawView(); return;
+  }
+  zoom=Math.exp(Math.log(zoom)+Math.log(zTarget/zoom)*0.19);
   zr.value=zoomToSlider(zoom);
-  drawView();
+  moving=true; drawView();
   anim=requestAnimationFrame(tick);
 }
 function setZoom(z,instant){
   zTarget=clamp(z,1,ZMAX);
-  if(instant){ zoom=zTarget; drawView(); return; }
+  if(instant){ zoom=zTarget; zr.value=zoomToSlider(zoom); touch(); return; }
   if(!anim) anim=requestAnimationFrame(tick);
 }
-zr.addEventListener("input",function(){ zoom=sliderToZoom(+zr.value); zTarget=zoom; if(anim){cancelAnimationFrame(anim);anim=0;} drawView(); });
+zr.addEventListener("input",function(){ zoom=sliderToZoom(+zr.value); zTarget=zoom; if(anim){cancelAnimationFrame(anim);anim=0;} touch(); });
 
 view.addEventListener("wheel",function(e){
   e.preventDefault();
@@ -441,9 +461,9 @@ view.addEventListener("pointermove",function(e){
   if(k.length>=2){ var d=dist(); if(pinch0>10) setZoom(z0*d/pinch0,true); return; }
   if(!dragging) return;
   var rect=view.getBoundingClientRect(), s=view.width/rect.width;
-  cx=clamp(cx-((e.clientX-lx)*s)/(zoom*view.width)*(SW/SW),0,1);
+  cx=clamp(cx-((e.clientX-lx)*s)/(zoom*view.width),0,1);
   cy=clamp(cy-((e.clientY-ly)*s)/(zoom*view.width)*(SW/SH),0,1);
-  lx=e.clientX; ly=e.clientY; drawView();
+  lx=e.clientX; ly=e.clientY; touch();
 });
 function up(e){ delete ptrs[e.pointerId]; if(!Object.keys(ptrs).length){dragging=false;view.classList.remove("drag");} }
 view.addEventListener("pointerup",up); view.addEventListener("pointercancel",up);
@@ -457,7 +477,7 @@ view.addEventListener("dblclick",function(e){
 });
 mini.addEventListener("click",function(e){
   var r=mini.getBoundingClientRect();
-  cx=clamp((e.clientX-r.left)/r.width,0,1); cy=clamp((e.clientY-r.top)/r.height,0,1); drawView();
+  cx=clamp((e.clientX-r.left)/r.width,0,1); cy=clamp((e.clientY-r.top)/r.height,0,1); requestDraw();
 });
 
 var JUMPS=[["Mặt trời",0.63,0.52,30],["Vệt nắng trên nước",0.6,0.78,45],
