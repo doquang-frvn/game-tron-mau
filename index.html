@@ -50,6 +50,7 @@ input[type=range]{width:100%;accent-color:var(--m)}
 .jump{display:flex;gap:6px;flex-wrap:wrap}
 .jump button,.filebtn{font-size:13px;font-family:var(--font-b);font-weight:600;border:2px solid var(--line);background:transparent;color:var(--ink);border-radius:999px;padding:6px 12px;cursor:pointer}
 .jump button:hover,.filebtn:hover{border-color:var(--ink)}
+.jump button[aria-pressed="true"],.filebtn[aria-pressed="true"]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
 .filebtn{display:inline-block}
 #mini{aspect-ratio:4/3;border:2px solid var(--line);cursor:pointer}
 .bar{height:10px;border-radius:999px;background:var(--line);overflow:hidden}
@@ -92,6 +93,10 @@ ul{margin:0 0 10px;padding-left:20px} li{margin-bottom:6px}
       </div>
       <div class="ctrl card">
         <div>
+          <h3>Chọn tờ ảnh</h3>
+          <div class="jump" id="scenes"></div>
+        </div>
+        <div>
           <div class="zoomnum" id="zlabel">×1</div>
           <div class="badge" id="zdesc">Như mắt thường nhìn</div>
         </div>
@@ -114,6 +119,11 @@ ul{margin:0 0 10px;padding-left:20px} li{margin-bottom:6px}
         <div>
           <h3>Mực ở điểm giữa</h3>
           <div class="tiny" id="readout"></div>
+        </div>
+        <div>
+          <h3>Mang màu sang tool pha</h3>
+          <button class="filebtn" id="pick" aria-pressed="false">Hút một màu trong ảnh</button>
+          <p class="tiny" id="pickinfo" style="margin:6px 0 0">Bấm nút rồi chỉ vào ảnh, màu đó sẽ sang thẻ <strong>Tập in màu</strong> để con pha lại.</p>
         </div>
         <div>
           <h3>Dùng ảnh của con</h3>
@@ -147,7 +157,7 @@ ul{margin:0 0 10px;padding-left:20px} li{margin-bottom:6px}
         </div>
         <div class="swatchrow">
           <div><div class="swatch" id="sw"></div><div class="tiny" style="text-align:center;margin-top:4px">Nhìn từ xa</div></div>
-          <div><div class="swatch" id="tw"></div><div class="tiny" style="text-align:center;margin-top:4px">Màu cần in</div></div>
+          <div><div class="swatch" id="tw"></div><div class="tiny" style="text-align:center;margin-top:4px" id="tname">Màu cần in</div></div>
         </div>
         <div>
           <div class="match" id="match">—</div>
@@ -156,6 +166,10 @@ ul{margin:0 0 10px;padding-left:20px} li{margin-bottom:6px}
         <div>
           <h3>Thử in màu</h3>
           <div class="jump" id="targets"></div>
+        </div>
+        <div>
+          <button class="filebtn" id="auto">Xem máy in pha thế nào</button>
+          <p class="tiny" style="margin:6px 0 0">Bấm sau khi con đã tự thử, để so với cách máy in tính.</p>
         </div>
       </div>
     </div>
@@ -214,7 +228,7 @@ var sctx=srcC.getContext("2d"), sdata=null;
 
 function rnd(seed){ var s=seed; return function(){ s=(s*1664525+1013904223)%4294967296; return s/4294967296; }; }
 
-function paintScene(){
+function sceneSunset(){
   var g=sctx.createLinearGradient(0,0,0,SH*0.62);
   g.addColorStop(0,"#2a4a86"); g.addColorStop(0.28,"#5d6fa8");
   g.addColorStop(0.55,"#c98a86"); g.addColorStop(0.78,"#f0a865");
@@ -296,13 +310,174 @@ function paintScene(){
     sctx.quadraticCurveTo(px+w*0.5,py-w*0.5,px+w,py); sctx.stroke();
   });
 
-  /* hạt mịn cho giống ảnh chụp */
-  var im=sctx.getImageData(0,0,SW,SH), d=im.data, r3=rnd(99);
-  for(var p=0;p<d.length;p+=4){
-    var n=(r3()-0.5)*7; d[p]+=n; d[p+1]+=n; d[p+2]+=n;
+}
+
+/* hạt mịn cho giống ảnh chụp, rồi chốt dữ liệu điểm ảnh */
+function finishScene(grain){
+  if(grain!==0){
+    var im=sctx.getImageData(0,0,SW,SH), d=im.data, r3=rnd(99), amp=grain||7;
+    for(var p=0;p<d.length;p+=4){
+      var n=(r3()-0.5)*amp; d[p]+=n; d[p+1]+=n; d[p+2]+=n;
+    }
+    sctx.putImageData(im,0,0);
   }
-  sctx.putImageData(im,0,0);
   sdata=sctx.getImageData(0,0,SW,SH).data;
+}
+
+/* ---- cảnh 2: chú vẹt sắc sỡ ---- */
+function sceneParrot(){
+  var bg=sctx.createLinearGradient(0,0,SW,SH);
+  bg.addColorStop(0,"#15412f"); bg.addColorStop(0.5,"#1f6b47"); bg.addColorStop(1,"#0d2f22");
+  sctx.fillStyle=bg; sctx.fillRect(0,0,SW,SH);
+  var r=rnd(31);
+  for(var i=0;i<70;i++){                      /* lá nhòe phía sau */
+    var lx=SW*r(), ly=SH*r(), lw=SW*(0.04+r()*0.13), a=r()*6.28;
+    sctx.save(); sctx.translate(lx,ly); sctx.rotate(a);
+    sctx.fillStyle="rgba("+Math.round(40+r()*70)+","+Math.round(110+r()*90)+","+Math.round(55+r()*50)+",0.5)";
+    sctx.beginPath(); sctx.ellipse(0,0,lw,lw*0.28,0,0,6.2832); sctx.fill(); sctx.restore();
+  }
+  var cx=SW*0.46, cy=SH*0.54, R=SW*0.2;
+  sctx.save(); sctx.translate(cx,cy);
+  /* đuôi dài */
+  [["#1b5fbf",0.0],["#1878d8",0.09],["#2b9ae8",0.18]].forEach(function(t,n){
+    sctx.save(); sctx.rotate(0.5+n*0.1);
+    sctx.fillStyle=t[0]; sctx.beginPath();
+    sctx.ellipse(R*1.25,R*0.95,R*0.85,R*0.11,0.55,0,6.2832); sctx.fill(); sctx.restore();
+  });
+  /* thân vàng cam */
+  var body=sctx.createRadialGradient(-R*0.2,-R*0.25,R*0.05,0,0,R*1.25);
+  body.addColorStop(0,"#ffe9a8"); body.addColorStop(0.35,"#ffc83a");
+  body.addColorStop(0.72,"#f58a1f"); body.addColorStop(1,"#c9520f");
+  sctx.fillStyle=body; sctx.beginPath(); sctx.ellipse(0,R*0.12,R*0.72,R*0.95,0.1,0,6.2832); sctx.fill();
+  /* cánh xanh lục */
+  var wing=sctx.createLinearGradient(-R*0.1,-R*0.5,R*0.8,R*0.8);
+  wing.addColorStop(0,"#7fd43a"); wing.addColorStop(0.5,"#2f9b3f"); wing.addColorStop(1,"#15632f");
+  sctx.fillStyle=wing; sctx.beginPath(); sctx.ellipse(R*0.3,R*0.25,R*0.38,R*0.72,-0.35,0,6.2832); sctx.fill();
+  for(var f=0;f<9;f++){                       /* vệt lông cánh */
+    sctx.strokeStyle="rgba(10,60,28,0.4)"; sctx.lineWidth=SW*0.0022;
+    sctx.beginPath(); sctx.moveTo(R*(0.05+f*0.055),R*(-0.3+f*0.04));
+    sctx.quadraticCurveTo(R*0.42,R*(0.1+f*0.07),R*(0.3+f*0.03),R*0.9); sctx.stroke();
+  }
+  /* đầu đỏ */
+  var hd=sctx.createRadialGradient(-R*0.42,-R*0.85,R*0.03,-R*0.3,-R*0.72,R*0.5);
+  hd.addColorStop(0,"#ff7a6a"); hd.addColorStop(0.5,"#e32424"); hd.addColorStop(1,"#9c1018");
+  sctx.fillStyle=hd; sctx.beginPath(); sctx.ellipse(-R*0.3,-R*0.72,R*0.42,R*0.38,-0.15,0,6.2832); sctx.fill();
+  /* mỏ */
+  sctx.fillStyle="#f0f0e4"; sctx.beginPath();
+  sctx.moveTo(-R*0.62,-R*0.78); sctx.quadraticCurveTo(-R*1.0,-R*0.72,-R*0.84,-R*0.42);
+  sctx.quadraticCurveTo(-R*0.66,-R*0.54,-R*0.56,-R*0.62); sctx.closePath(); sctx.fill();
+  sctx.fillStyle="#2a2420"; sctx.beginPath();
+  sctx.moveTo(-R*0.66,-R*0.6); sctx.quadraticCurveTo(-R*0.82,-R*0.45,-R*0.72,-R*0.34);
+  sctx.quadraticCurveTo(-R*0.6,-R*0.46,-R*0.58,-R*0.56); sctx.closePath(); sctx.fill();
+  /* mắt */
+  sctx.fillStyle="#fdf6e0"; sctx.beginPath(); sctx.arc(-R*0.44,-R*0.86,R*0.1,0,6.2832); sctx.fill();
+  sctx.fillStyle="#241c16"; sctx.beginPath(); sctx.arc(-R*0.44,-R*0.86,R*0.052,0,6.2832); sctx.fill();
+  sctx.fillStyle="rgba(255,255,255,0.9)"; sctx.beginPath(); sctx.arc(-R*0.465,-R*0.885,R*0.018,0,6.2832); sctx.fill();
+  sctx.restore();
+  /* cành cây */
+  sctx.strokeStyle="#5c4326"; sctx.lineWidth=SW*0.03; sctx.lineCap="round";
+  sctx.beginPath(); sctx.moveTo(SW*0.1,SH*0.88); sctx.quadraticCurveTo(SW*0.5,SH*0.8,SW*0.95,SH*0.86); sctx.stroke();
+}
+
+/* ---- cảnh 3: giỏ trái cây ---- */
+function sceneFruit(){
+  var bg=sctx.createLinearGradient(0,0,0,SH);
+  bg.addColorStop(0,"#efe3cd"); bg.addColorStop(0.55,"#ddcbac"); bg.addColorStop(1,"#a8906d");
+  sctx.fillStyle=bg; sctx.fillRect(0,0,SW,SH);
+  sctx.fillStyle="rgba(120,96,64,0.35)";
+  sctx.beginPath(); sctx.ellipse(SW*0.5,SH*0.8,SW*0.44,SH*0.1,0,0,6.2832); sctx.fill();
+  function fruit(fx,fy,rr,c1,c2,c3){
+    var g=sctx.createRadialGradient(fx-rr*0.35,fy-rr*0.4,rr*0.05,fx,fy,rr*1.15);
+    g.addColorStop(0,c1); g.addColorStop(0.45,c2); g.addColorStop(1,c3);
+    sctx.fillStyle=g; sctx.beginPath(); sctx.arc(fx,fy,rr,0,6.2832); sctx.fill();
+    sctx.fillStyle="rgba(255,255,255,0.5)";
+    sctx.beginPath(); sctx.ellipse(fx-rr*0.38,fy-rr*0.44,rr*0.17,rr*0.1,-0.6,0,6.2832); sctx.fill();
+  }
+  fruit(SW*0.26,SH*0.60,SW*0.12,"#ffd9a0","#f07c12","#a8430a");   /* cam */
+  fruit(SW*0.50,SH*0.56,SW*0.135,"#ff9a90","#d01e22","#780d16");  /* táo đỏ */
+  fruit(SW*0.73,SH*0.61,SW*0.115,"#f3f08a","#c8d117","#6f7a0c");  /* chanh */
+  fruit(SW*0.62,SH*0.74,SW*0.085,"#c9a6e8","#7a3fa8","#3f1a60");  /* nho tím */
+  fruit(SW*0.38,SH*0.76,SW*0.075,"#a9e3f5","#2f8fc4","#13506f");  /* việt quất */
+  /* cuống lá */
+  sctx.strokeStyle="#4e7a28"; sctx.lineWidth=SW*0.009; sctx.lineCap="round";
+  sctx.beginPath(); sctx.moveTo(SW*0.5,SH*0.425); sctx.quadraticCurveTo(SW*0.52,SH*0.38,SW*0.505,SH*0.355); sctx.stroke();
+  sctx.fillStyle="#5d9330"; sctx.beginPath();
+  sctx.ellipse(SW*0.545,SH*0.365,SW*0.055,SH*0.028,-0.5,0,6.2832); sctx.fill();
+  /* bóng mềm dưới mỗi quả */
+  sctx.fillStyle="rgba(90,70,45,0.22)";
+  [[0.26,0.60,0.12],[0.50,0.56,0.135],[0.73,0.61,0.115]].forEach(function(p){
+    sctx.beginPath(); sctx.ellipse(SW*p[0]+SW*0.02,SH*(p[1])+SW*p[2]*0.95,SW*p[2]*0.8,SH*0.022,0,0,6.2832); sctx.fill();
+  });
+}
+
+/* ---- cảnh 4: khinh khí cầu trên đồi ---- */
+function sceneBalloons(){
+  var sky=sctx.createLinearGradient(0,0,0,SH*0.72);
+  sky.addColorStop(0,"#3f84d6"); sky.addColorStop(0.55,"#9ccbee"); sky.addColorStop(1,"#e4f0f6");
+  sctx.fillStyle=sky; sctx.fillRect(0,0,SW,SH*0.72);
+  var r=rnd(53);
+  for(var i=0;i<16;i++){                      /* mây bông */
+    var cx=SW*r(), cy=SH*(0.05+r()*0.45);
+    for(var b=0;b<6;b++){
+      sctx.fillStyle="rgba(255,255,255,"+(0.3+r()*0.35).toFixed(2)+")";
+      sctx.beginPath();
+      sctx.ellipse(cx+(r()-0.5)*SW*0.11,cy+(r()-0.5)*SH*0.03,SW*(0.025+r()*0.04),SH*(0.016+r()*0.02),0,0,6.2832);
+      sctx.fill();
+    }
+  }
+  /* đồi */
+  [[0.70,"#86b45a"],[0.78,"#5f9340"],[0.88,"#3d6f2e"]].forEach(function(h){
+    sctx.fillStyle=h[1]; sctx.beginPath(); sctx.moveTo(0,SH);
+    sctx.lineTo(0,SH*h[0]);
+    for(var x=0;x<=SW;x+=50) sctx.lineTo(x,SH*h[0]-Math.sin(x/320+h[0]*9)*SH*0.045);
+    sctx.lineTo(SW,SH); sctx.closePath(); sctx.fill();
+  });
+  function balloon(bx,by,s,cols){
+    var ang=Math.PI*1.0;
+    for(var k=0;k<8;k++){
+      var a0=ang+k*Math.PI/4, c=cols[k%cols.length];
+      var g=sctx.createLinearGradient(bx-s,by-s,bx+s,by+s);
+      g.addColorStop(0,c[0]); g.addColorStop(1,c[1]);
+      sctx.fillStyle=g; sctx.beginPath(); sctx.moveTo(bx,by);
+      sctx.arc(bx,by,s,a0,a0+Math.PI/4); sctx.closePath(); sctx.fill();
+    }
+    sctx.fillStyle="rgba(255,255,255,0.3)";
+    sctx.beginPath(); sctx.ellipse(bx-s*0.35,by-s*0.4,s*0.22,s*0.13,-0.6,0,6.2832); sctx.fill();
+    sctx.strokeStyle="rgba(50,40,30,0.6)"; sctx.lineWidth=s*0.025;
+    sctx.beginPath(); sctx.moveTo(bx-s*0.3,by+s*0.85); sctx.lineTo(bx-s*0.14,by+s*1.35);
+    sctx.moveTo(bx+s*0.3,by+s*0.85); sctx.lineTo(bx+s*0.14,by+s*1.35); sctx.stroke();
+    sctx.fillStyle="#8a5a2a"; sctx.fillRect(bx-s*0.17,by+s*1.33,s*0.34,s*0.24);
+    sctx.fillStyle="rgba(0,0,0,0.18)"; sctx.fillRect(bx-s*0.17,by+s*1.5,s*0.34,s*0.07);
+  }
+  balloon(SW*0.33,SH*0.33,SW*0.125,[["#e8342e","#9c1016"],["#fcd533","#d49a06"],["#f7f3e6","#cfc6ae"],["#2f6fc4","#17407d"]]);
+  balloon(SW*0.68,SH*0.23,SW*0.075,[["#f5801f","#a8420a"],["#7a3fa8","#3f1a60"],["#f7f3e6","#cfc6ae"]]);
+  balloon(SW*0.82,SH*0.45,SW*0.05,[["#2fa864","#14603a"],["#fcd533","#d49a06"]]);
+  /* bông hoa dưới đồi */
+  var r2=rnd(77);
+  for(var f=0;f<90;f++){
+    var fx=SW*r2(), fy=SH*(0.82+r2()*0.17), fs=SW*(0.004+r2()*0.005);
+    sctx.fillStyle=["#f6e45a","#f2f0e4","#e8698f","#f0a93a"][(r2()*4)|0];
+    sctx.beginPath(); sctx.arc(fx,fy,fs,0,6.2832); sctx.fill();
+  }
+}
+
+var SCENES=[
+ {name:"Hoàng hôn trên biển", fn:sceneSunset, grain:7, start:[0.42,0.55],
+  jumps:[["Mặt trời",0.63,0.52,30],["Vệt nắng trên nước",0.6,0.78,45],["Chiếc thuyền",0.30,0.655,55],["Bầu trời xanh",0.2,0.12,22]]},
+ {name:"Chú vẹt", fn:sceneParrot, grain:5, start:[0.42,0.5],
+  jumps:[["Mắt vẹt",0.355,0.395,34],["Đầu đỏ",0.37,0.42,28],["Cánh xanh lục",0.52,0.6,32],["Đuôi xanh lam",0.72,0.78,38]]},
+ {name:"Giỏ trái cây", fn:sceneFruit, grain:6, start:[0.5,0.62],
+  jumps:[["Quả cam",0.26,0.60,34],["Táo đỏ",0.50,0.56,34],["Chanh vàng",0.73,0.61,34],["Nho tím",0.62,0.74,42]]},
+ {name:"Khinh khí cầu", fn:sceneBalloons, grain:5, start:[0.4,0.4],
+  jumps:[["Múi đỏ",0.30,0.30,34],["Múi vàng",0.37,0.30,34],["Đồi cỏ xanh",0.5,0.84,30],["Mây trắng",0.2,0.2,26]]}
+];
+var sceneIdx=0, photoMode=false;
+function loadScene(n){
+  sceneIdx=n; photoMode=false;
+  sctx.setTransform(1,0,0,1,0,0); sctx.globalAlpha=1;
+  sctx.fillStyle="#fff"; sctx.fillRect(0,0,SW,SH);
+  SCENES[n].fn(); finishScene(SCENES[n].grain);
+  buildJumps();
 }
 
 function sample(x,y,out){           /* x,y tính bằng điểm ảnh gốc, lấy mẫu song tuyến */
@@ -447,6 +622,7 @@ view.addEventListener("wheel",function(e){
 
 var ptrs={}, dragging=false, lx=0, ly=0, pinch0=0, z0=1;
 view.addEventListener("pointerdown",function(e){
+  if(picking){ pickAt(e.clientX,e.clientY); return; }
   view.setPointerCapture(e.pointerId); ptrs[e.pointerId]=[e.clientX,e.clientY];
   var k=Object.keys(ptrs);
   if(k.length===1){ dragging=true; lx=e.clientX; ly=e.clientY; view.classList.add("drag"); }
@@ -480,13 +656,31 @@ mini.addEventListener("click",function(e){
   cx=clamp((e.clientX-r.left)/r.width,0,1); cy=clamp((e.clientY-r.top)/r.height,0,1); requestDraw();
 });
 
-var JUMPS=[["Mặt trời",0.63,0.52,30],["Vệt nắng trên nước",0.6,0.78,45],
-           ["Chiếc thuyền",0.30,0.655,55],["Bầu trời xanh",0.2,0.12,22],["Xem cả ảnh",0.5,0.5,1]];
 var jb=document.getElementById("jump");
-JUMPS.forEach(function(j){
-  var b=document.createElement("button"); b.textContent=j[0];
-  b.addEventListener("click",function(){ cx=j[1]; cy=j[2]; setZoom(j[3]); });
-  jb.appendChild(b);
+function buildJumps(){
+  jb.innerHTML="";
+  var list=photoMode?[["Giữa ảnh",0.5,0.5,30],["Góc trên",0.25,0.25,30],["Góc dưới",0.75,0.75,30]]
+                    :SCENES[sceneIdx].jumps;
+  list.concat([["Xem cả ảnh",0.5,0.5,1]]).forEach(function(j){
+    var b=document.createElement("button"); b.textContent=j[0];
+    b.addEventListener("click",function(){ cx=j[1]; cy=j[2]; setZoom(j[3]); });
+    jb.appendChild(b);
+  });
+}
+
+/* chọn cảnh */
+var sb=document.getElementById("scenes");
+function markScene(){
+  Array.prototype.forEach.call(sb.children,function(b,i){
+    b.setAttribute("aria-pressed",String(!photoMode&&i===sceneIdx));
+  });
+}
+SCENES.forEach(function(s,i){
+  var b=document.createElement("button"); b.textContent=s.name;
+  b.addEventListener("click",function(){
+    loadScene(i); cx=s.start[0]; cy=s.start[1]; markScene(); setZoom(1,true);
+  });
+  sb.appendChild(b);
 });
 
 document.getElementById("file").addEventListener("change",function(e){
@@ -494,13 +688,43 @@ document.getElementById("file").addEventListener("change",function(e){
   var url=URL.createObjectURL(f), img=new Image();
   img.onload=function(){
     var sc=Math.max(SW/img.width,SH/img.height), w=img.width*sc, h=img.height*sc;
+    sctx.setTransform(1,0,0,1,0,0); sctx.globalAlpha=1;
     sctx.fillStyle="#fff"; sctx.fillRect(0,0,SW,SH);
     sctx.drawImage(img,(SW-w)/2,(SH-h)/2,w,h);
     try{ sdata=sctx.getImageData(0,0,SW,SH).data; }catch(err){}
-    URL.revokeObjectURL(url); cx=0.5; cy=0.5; setZoom(1,true);
+    URL.revokeObjectURL(url);
+    photoMode=true; markScene(); buildJumps();
+    cx=0.5; cy=0.5; setZoom(1,true);
   };
   img.src=url;
 });
+
+/* ===== ống hút màu: lấy màu từ ảnh đưa sang tool pha màu ===== */
+var pickBtn=document.getElementById("pick"), pickInfo=document.getElementById("pickinfo");
+var picking=false;
+pickBtn.addEventListener("click",function(){
+  picking=!picking;
+  pickBtn.setAttribute("aria-pressed",String(picking));
+  pickBtn.textContent=picking?"Đang hút màu — bấm vào ảnh":"Hút một màu trong ảnh";
+  view.style.cursor=picking?"crosshair":"grab";
+});
+function pickAt(clientX,clientY){
+  var r=view.getBoundingClientRect();
+  var vw=SW/zoom, vh=vw*view.height/view.width;
+  var vx=clamp(cx*SW-vw/2,-vw*0.15,SW-vw*0.85), vy=clamp(cy*SH-vh/2,-vh*0.15,SH-vh*0.85);
+  var px=vx+((clientX-r.left)/r.width)*vw, py=vy+((clientY-r.top)/r.height)*vh;
+  var acc=[0,0,0], t=[0,0,0], n=0;
+  for(var dx=-3;dx<=3;dx++)for(var dy=-3;dy<=3;dy++){   /* lấy trung bình ô nhỏ cho đỡ nhiễu */
+    sample(px+dx,py+dy,t); acc[0]+=t[0]; acc[1]+=t[1]; acc[2]+=t[2]; n++;
+  }
+  var rgb=[Math.round(acc[0]/n),Math.round(acc[1]/n),Math.round(acc[2]/n)];
+  setTargetRGB("Màu vừa hút",rgb,true);
+  pickInfo.innerHTML='Đã hút <span style="display:inline-block;width:14px;height:14px;border-radius:4px;'+
+    'vertical-align:-2px;border:1px solid var(--line);background:rgb('+rgb.join(",")+')"></span> '+
+    "— mở thẻ <strong>Tập in màu</strong> để pha lại màu này.";
+  picking=false; pickBtn.setAttribute("aria-pressed","false");
+  pickBtn.textContent="Hút một màu trong ảnh"; view.style.cursor="grab";
+}
 
 /* ===== panel 2 ===== */
 var patch=document.getElementById("patch"), pctx=patch.getContext("2d");
@@ -547,8 +771,37 @@ ids.forEach(function(id){ document.getElementById(id).addEventListener("input",d
 var tbox=document.getElementById("targets");
 TARGETS.forEach(function(t){
   var b=document.createElement("button"); b.textContent=t[0];
-  b.addEventListener("click",function(){ target=t; drawPatch(); });
+  b.addEventListener("click",function(){ setTargetRGB(t[0],t[1],false); });
   tbox.appendChild(b);
+});
+
+/* nhận màu từ ảnh (hoặc từ nút màu mẫu) */
+var pickedBtn=null, nameEl=document.getElementById("tname");
+function setTargetRGB(name,rgb,fromPhoto){
+  target=[name,rgb];
+  if(fromPhoto){
+    if(!pickedBtn){
+      pickedBtn=document.createElement("button");
+      tbox.insertBefore(pickedBtn,tbox.firstChild);
+      pickedBtn.addEventListener("click",function(){ if(pickedBtn.__rgb) setTargetRGB("Màu vừa hút",pickedBtn.__rgb,false); });
+    }
+    pickedBtn.__rgb=rgb.slice();
+    pickedBtn.textContent="◉ Màu hút từ ảnh";
+  }
+  nameEl.textContent=name;
+  drawPatch();
+}
+/* máy in tự tính 4 lọ mực cho màu này */
+document.getElementById("auto").addEventListener("click",function(){
+  if(!target) return;
+  var r=target[1][0]/255,g=target[1][1]/255,b=target[1][2]/255;
+  var k=1-Math.max(r,Math.max(g,b)), c=0,m=0,y=0;
+  if(k<0.999){ c=(1-r-k)/(1-k); m=(1-g-k)/(1-k); y=(1-b-k)/(1-k); }
+  document.getElementById("ic").value=Math.round(c*100);
+  document.getElementById("im").value=Math.round(m*100);
+  document.getElementById("iy").value=Math.round(y*100);
+  document.getElementById("ik").value=Math.round(k*100);
+  drawPatch();
 });
 
 /* ===== panel 3 ===== */
@@ -585,10 +838,13 @@ Array.prototype.forEach.call(document.querySelectorAll(".tab"),function(t){
     Array.prototype.forEach.call(document.querySelectorAll(".tab"),function(o){o.setAttribute("aria-selected",String(o===t));});
     ["p1","p2","p3"].forEach(function(id){ document.getElementById(id).hidden=(id!==t.dataset.p); });
     if(t.dataset.p==="p1") drawView();
+    if(t.dataset.p==="p2") drawPatch();
+    if(t.dataset.p==="p3") drawMix();
+    try{ t.scrollIntoView({block:"start",behavior:"smooth"}); }catch(e){ t.scrollIntoView(); }
   });
 });
 
-paintScene(); drawView(); drawPatch(); drawMix();
+loadScene(0); markScene(); drawView(); drawPatch(); drawMix();
 })();
 </script>
 
